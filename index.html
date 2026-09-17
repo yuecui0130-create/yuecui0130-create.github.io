@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="European option pricing, Greeks and expiry P&amp;L using the Black–Scholes–Merton model.">
+  <meta name="theme-color" content="#122034">
+  <title>Yue Cui · Derivatives Lab</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23122034'/%3E%3Cpath d='M8 24 16 7l8 17Z' fill='none' stroke='%239bedd3' stroke-width='2.5'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="profile.js"></script>
+  <script defer src="pricing.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-header">
+    <a class="brand" href="#main" aria-label="Derivatives Lab home"><span class="brand-mark" aria-hidden="true">Δ</span><span id="site-name">Yue Cui</span></a>
+    <nav aria-label="Main navigation"><a href="#lab">Pricing</a><a href="#notes">Notes</a><a href="#about">About</a><a id="github-link" class="github-link" hidden>GitHub ↗</a></nav>
+  </header>
+  <main id="main">
+    <section class="intro" aria-labelledby="page-title">
+      <div><p class="eyebrow">FINANCIAL ENGINEERING / 01</p><h1 id="page-title">Derivatives Lab</h1><p class="intro-copy">European option pricing and risk sensitivities.</p></div>
+      <div class="intro-meta"><span>European options · BSM</span><span>Pricing / Greeks / Expiry P&amp;L</span></div>
+    </section>
+
+    <section id="lab" class="lab-grid" aria-label="Option pricing calculator">
+      <form class="input-panel panel" id="pricing-form" novalidate>
+        <div class="section-top"><h2>Parameters</h2><button type="button" id="reset" class="text-button">Reset</button></div>
+        <fieldset class="option-type"><legend class="sr-only">Option type</legend><label><input type="radio" name="type" value="call" checked><span>Call</span></label><label><input type="radio" name="type" value="put"><span>Put</span></label></fieldset>
+        <div class="field-grid">
+          <label class="field" for="spot"><span>Spot price <em>S</em></span><input id="spot" name="spot" type="number" min="1" max="10000" step="any" value="100" required></label>
+          <label class="field" for="strike"><span>Strike price <em>K</em></span><input id="strike" name="strike" type="number" min="1" max="10000" step="any" value="100" required></label>
+          <label class="field" for="days"><span>Maturity <em>days</em></span><input id="days" name="days" type="number" min="1" max="3650" step="1" value="180" required></label>
+          <label class="field" for="vol"><span>Volatility <em>%</em></span><input id="vol" name="vol" type="number" min="1" max="200" step="any" value="20" required></label>
+          <label class="field" for="rate"><span>Risk-free rate <em>%</em></span><input id="rate" name="rate" type="number" min="-10" max="30" step="any" value="3" required></label>
+          <label class="field" for="dividend"><span>Dividend yield <em>%</em></span><input id="dividend" name="dividend" type="number" min="0" max="30" step="any" value="0" required></label>
+        </div>
+        <div class="vol-control"><label for="vol-slider">Adjust annual volatility</label><input id="vol-slider" type="range" min="1" max="200" step="0.1" value="20"><div class="range-ends"><span>1%</span><span>200%</span></div></div>
+        <div class="presets"><span class="small-label">Presets</span><div><button type="button" data-preset="atm">At the money</button><button type="button" data-preset="volatile">High volatility</button><button type="button" data-preset="expiry">Near expiry</button></div></div>
+        <p id="input-error" class="input-error" role="alert" hidden></p>
+        <p class="input-note">ACT/365 time basis. Rates and dividend yields are continuously compounded. Prices are per unit of underlying.</p>
+      </form>
+
+      <div class="results-column" id="results">
+        <section class="price-panel" aria-labelledby="price-label">
+          <div><p id="price-label">Model price <span id="option-label">EUROPEAN CALL</span></p><div class="price-line"><strong id="price">—</strong><span>per unit</span></div></div>
+          <div class="price-detail"><div><span>Intrinsic value</span><strong id="intrinsic">—</strong></div><div><span>Moneyness</span><strong id="moneyness">—</strong></div><div><span>Breakeven</span><strong id="breakeven">—</strong></div></div>
+        </section>
+        <section class="chart-panel panel" aria-labelledby="chart-title">
+          <div class="chart-header"><div><p class="eyebrow">SCENARIO ANALYSIS</p><h2 id="chart-title">Option value vs. spot</h2></div><div class="chart-tabs" role="tablist" aria-label="Chart measure"><button type="button" role="tab" id="tab-value" aria-selected="true" aria-controls="chart-region" data-chart="value">Value</button><button type="button" role="tab" id="tab-delta" aria-selected="false" aria-controls="chart-region" tabindex="-1" data-chart="delta">Delta</button><button type="button" role="tab" id="tab-profit" aria-selected="false" aria-controls="chart-region" tabindex="-1" data-chart="profit">Expiry P&amp;L</button></div></div>
+          <div id="chart-region" role="tabpanel" aria-labelledby="tab-value"><div class="chart-legend"><span><i class="legend-model"></i><span id="legend-primary">BSM value</span></span><span id="legend-secondary"><i class="legend-intrinsic"></i>Intrinsic value</span><span class="legend-position">Dashed line: current spot</span></div><div class="canvas-wrap"><canvas id="chart" role="img" aria-label="Option value curve. Scenario values are listed in the table below."></canvas><div id="chart-tooltip" class="chart-tooltip" hidden></div></div><p id="chart-caption" class="chart-caption">All other inputs are held constant. The grey line shows intrinsic value at each spot price.</p></div>
+          <details class="scenario-details"><summary>Scenario data</summary><div class="table-wrap"><table><caption class="sr-only">Option value, Delta and expiry P&amp;L across spot scenarios</caption><thead><tr><th scope="col">Spot change</th><th scope="col">Spot price</th><th scope="col">Model value</th><th scope="col">Delta</th><th scope="col">Expiry P&amp;L</th></tr></thead><tbody id="scenario-body"></tbody></table></div><p>Expiry P&amp;L uses each scenario price as the terminal spot. Model value and Delta use the current time to expiry.</p></details>
+        </section>
+      </div>
+    </section>
+
+    <section class="greeks-section" aria-labelledby="greeks-title"><div class="section-heading"><h2 id="greeks-title">Greeks</h2><p>Long option sensitivities, with other inputs held constant</p></div><div class="greeks-grid">
+      <article class="greek"><div><h3>Delta <span>Δ</span></h3><strong id="delta">—</strong></div><p>Option price change for a<br>one-unit increase in spot</p></article>
+      <article class="greek"><div><h3>Gamma <span>Γ</span></h3><strong id="gamma">—</strong></div><p>Delta change for a<br>one-unit increase in spot</p></article>
+      <article class="greek"><div><h3>Vega <span>ν</span></h3><strong id="vega">—</strong></div><p>Option price change for a<br>1 pp increase in volatility</p></article>
+      <article class="greek"><div><h3>Theta <span>Θ</span></h3><strong id="theta">—</strong></div><p>Option price change for<br>one calendar day elapsed</p></article>
+      <article class="greek"><div><h3>Rho <span>ρ</span></h3><strong id="rho">—</strong></div><p>Option price change for a<br>1 pp increase in interest rate</p></article>
+    </div><p id="result-summary" class="sr-only" aria-live="polite" aria-atomic="true"></p></section>
+
+    <section id="notes" class="notes-section" aria-labelledby="notes-title"><div class="section-heading"><div><p class="eyebrow">RESEARCH NOTES</p><h2 id="notes-title">Pricing notes</h2></div><span class="section-index">02 / NOTES</span></div><div class="notes-grid">
+      <article class="note-card"><span class="note-number">01</span><h3>Risk-neutral valuation</h3><p>BSM discounts the expected payoff under the risk-neutral distribution. Volatility controls its spread; the interest rate and dividend yield determine the forward price.</p><details><summary>Model formulas</summary><div class="formula">d₁ = [ln(S/K) + (r − q + σ²/2)T] / (σ√T)<br>d₂ = d₁ − σ√T<br>C = Se<sup>−qT</sup>N(d₁) − Ke<sup>−rT</sup>N(d₂)<br>P = Ke<sup>−rT</sup>N(−d₂) − Se<sup>−qT</sup>N(−d₁)</div><p>N is the standard normal cumulative distribution function. The model assumes European exercise, constant volatility and rates, a continuous dividend yield, frictionless markets and continuous trading.</p></details></article>
+      <article class="note-card"><span class="note-number">02</span><h3>Delta changes with spot</h3><p>Delta measures local price sensitivity. Gamma measures how Delta changes with spot. Near expiry, Delta tends to change more sharply around the strike.</p><details><summary>Reading the sensitivities</summary><p>Select the Near expiry preset and compare the Delta curve. A single Delta estimate becomes less reliable for large spot moves; the scenario charts reprice the option at each point.</p><p>Vega and Rho are quoted per percentage point. Theta is quoted per calendar day of elapsed time.</p></details></article>
+      <article class="note-card"><span class="note-number">03</span><h3>Put–call parity</h3><p>For matching European calls and puts, the price difference equals discounted spot less discounted strike. The residual below checks this relation for the current inputs.</p><div class="parity-formula">C − P = Se<sup>−qT</sup> − Ke<sup>−rT</sup></div><div class="parity-check"><span>Parity residual</span><strong id="parity">—</strong></div></article>
+    </div></section>
+
+    <section id="about" class="about-section" aria-labelledby="about-title"><div><p class="eyebrow">ABOUT THIS PROJECT</p><h2 id="about-title">Scope and implementation</h2><p id="about-copy">This project implements European option pricing in the browser. It brings together BSM valuation, analytic Greeks and scenario repricing, with numerical tests for benchmark prices, sensitivities and put–call parity.</p><a class="source-link" href="pricing.js" target="_blank" rel="noopener">View pricing code ↗</a></div><div class="method-note"><h3>Assumptions and limits</h3><p>Inputs are illustrative, with no live market feed. Values exclude transaction costs, slippage and contract multipliers. Expiry P&amp;L is payoff less the current premium, without financing costs.</p><p>Constant volatility does not capture smiles or jumps. The model does not handle early exercise and is not intended for American options or complex structured products.</p><div class="references"><a href="https://www.cmegroup.com/education/courses/option-greeks" target="_blank" rel="noopener noreferrer">CME · Option Greeks ↗</a><a href="https://www.csie.ntu.edu.tw/~lyuu/finance1/2006/20060329.pdf" target="_blank" rel="noopener noreferrer">NTU · BSM lecture notes ↗</a></div></div></section>
+  </main>
+  <footer><span>Δ <span id="footer-name">Yue Cui</span></span><span>European option pricing</span><a href="#main">Back to top ↑</a></footer>
+  <noscript><div class="noscript-note">Enable JavaScript to use the calculator and charts. The model notes remain available below.</div></noscript>
+</body>
+</html>
