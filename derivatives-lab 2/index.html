@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="金融工程学习项目：欧式期权定价、Greeks 风险敏感度与到期盈亏的交互分析。">
+  <meta name="theme-color" content="#122034">
+  <title>Yue Cui · Derivatives Lab</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23122034'/%3E%3Cpath d='M8 24 16 7l8 17Z' fill='none' stroke='%239bedd3' stroke-width='2.5'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="profile.js"></script>
+  <script defer src="pricing.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳至主要内容</a>
+  <header class="site-header">
+    <a class="brand" href="#main" aria-label="回到衍生品实验室"><span class="brand-mark" aria-hidden="true">Δ</span><span id="site-name">Yue Cui</span></a>
+    <nav aria-label="主导航"><a href="#lab">定价实验</a><a href="#notes">风险笔记</a><a href="#about">项目说明</a><a id="github-link" class="github-link" hidden>GitHub ↗</a></nav>
+  </header>
+  <main id="main">
+    <section class="intro" aria-labelledby="page-title">
+      <div><p class="eyebrow">FINANCIAL ENGINEERING / 01</p><h1 id="page-title">衍生品实验室<span>Derivatives Lab</span></h1><p class="intro-copy">从一个期权出发，理解价格背后的风险。</p></div>
+      <div class="intro-meta"><span>欧式期权 · BSM 模型</span><span>交互定价 / 敏感度分析 / 到期盈亏</span></div>
+    </section>
+
+    <section id="lab" class="lab-grid" aria-label="期权定价实验">
+      <form class="input-panel panel" id="pricing-form" novalidate>
+        <div class="section-top"><h2>设定参数</h2><button type="button" id="reset" class="text-button">重置</button></div>
+        <fieldset class="option-type"><legend class="sr-only">期权类型</legend><label><input type="radio" name="type" value="call" checked><span>看涨 Call</span></label><label><input type="radio" name="type" value="put"><span>看跌 Put</span></label></fieldset>
+        <div class="field-grid">
+          <label class="field" for="spot"><span>标的价格 <em>S</em></span><input id="spot" name="spot" type="number" min="1" max="10000" step="any" value="100" required></label>
+          <label class="field" for="strike"><span>行权价格 <em>K</em></span><input id="strike" name="strike" type="number" min="1" max="10000" step="any" value="100" required></label>
+          <label class="field" for="days"><span>剩余期限 <em>天</em></span><input id="days" name="days" type="number" min="1" max="3650" step="1" value="180" required></label>
+          <label class="field" for="vol"><span>年化波动率 <em>%</em></span><input id="vol" name="vol" type="number" min="1" max="200" step="any" value="20" required></label>
+          <label class="field" for="rate"><span>无风险利率 <em>%</em></span><input id="rate" name="rate" type="number" min="-10" max="30" step="any" value="3" required></label>
+          <label class="field" for="dividend"><span>连续股息率 <em>%</em></span><input id="dividend" name="dividend" type="number" min="0" max="30" step="any" value="0" required></label>
+        </div>
+        <div class="vol-control"><label for="vol-slider">拖动观察波动率影响</label><input id="vol-slider" type="range" min="1" max="200" step="0.1" value="20"><div class="range-ends"><span>1%</span><span>200%</span></div></div>
+        <div class="presets"><span class="small-label">快速情景</span><div><button type="button" data-preset="atm">平值期权</button><button type="button" data-preset="volatile">高波动</button><button type="button" data-preset="expiry">临近到期</button></div></div>
+        <p id="input-error" class="input-error" role="alert" hidden></p>
+        <p class="input-note">期限按 ACT/365 换算；利率与股息率均采用连续复利。所有价格按 1 单位标的计。</p>
+      </form>
+
+      <div class="results-column" id="results">
+        <section class="price-panel" aria-labelledby="price-label">
+          <div><p id="price-label">理论价格 <span id="option-label">EUROPEAN CALL</span></p><div class="price-line"><strong id="price">—</strong><span>价格单位</span></div></div>
+          <div class="price-detail"><div><span>内在价值</span><strong id="intrinsic">—</strong></div><div><span>价内 / 价外</span><strong id="moneyness">—</strong></div><div><span>到期盈亏平衡</span><strong id="breakeven">—</strong></div></div>
+        </section>
+        <section class="chart-panel panel" aria-labelledby="chart-title">
+          <div class="chart-header"><div><p class="eyebrow">SCENARIO ANALYSIS</p><h2 id="chart-title">期权价值与标的价格</h2></div><div class="chart-tabs" role="tablist" aria-label="图表指标"><button type="button" role="tab" id="tab-value" aria-selected="true" aria-controls="chart-region" data-chart="value">价值</button><button type="button" role="tab" id="tab-delta" aria-selected="false" aria-controls="chart-region" tabindex="-1" data-chart="delta">Delta</button><button type="button" role="tab" id="tab-profit" aria-selected="false" aria-controls="chart-region" tabindex="-1" data-chart="profit">到期盈亏</button></div></div>
+          <div id="chart-region" role="tabpanel" aria-labelledby="tab-value"><div class="chart-legend"><span><i class="legend-model"></i><span id="legend-primary">BSM 理论价格</span></span><span id="legend-secondary"><i class="legend-intrinsic"></i>内在价值</span><span class="legend-position">虚线：当前标的价格</span></div><div class="canvas-wrap"><canvas id="chart" role="img" aria-label="期权价格曲线；精确情景数值见下方数据表。"></canvas><div id="chart-tooltip" class="chart-tooltip" hidden></div></div><p id="chart-caption" class="chart-caption">其他参数不变，比较不同标的价格下的期权价值；灰线为即刻内在价值。</p></div>
+          <details class="scenario-details"><summary>查看情景数据</summary><div class="table-wrap"><table><caption class="sr-only">标的价格变化对应的理论价格、Delta 及到期盈亏</caption><thead><tr><th scope="col">标的变化</th><th scope="col">标的价格</th><th scope="col">理论价格</th><th scope="col">Delta</th><th scope="col">到期盈亏</th></tr></thead><tbody id="scenario-body"></tbody></table></div><p>“到期盈亏”以相应价格作为到期标的价格计算；理论价格与 Delta 使用当前剩余期限。</p></details>
+        </section>
+      </div>
+    </section>
+
+    <section class="greeks-section" aria-labelledby="greeks-title"><div class="section-heading"><h2 id="greeks-title">把价格，拆成五种风险</h2><p>当前买入期权的局部敏感度 · 其他参数不变</p></div><div class="greeks-grid">
+      <article class="greek"><div><h3>Delta <span>Δ</span></h3><strong id="delta">—</strong></div><p>标的价格每增加 1 单位<br>期权价格的近似变化</p></article>
+      <article class="greek"><div><h3>Gamma <span>Γ</span></h3><strong id="gamma">—</strong></div><p>标的价格每增加 1 单位<br>Delta 的近似变化</p></article>
+      <article class="greek"><div><h3>Vega <span>ν</span></h3><strong id="vega">—</strong></div><p>波动率每增加 1 个百分点<br>期权价格的近似变化</p></article>
+      <article class="greek"><div><h3>Theta <span>Θ</span></h3><strong id="theta">—</strong></div><p>日历时间每流逝 1 天<br>期权价格的近似变化</p></article>
+      <article class="greek"><div><h3>Rho <span>ρ</span></h3><strong id="rho">—</strong></div><p>利率每增加 1 个百分点<br>期权价格的近似变化</p></article>
+    </div><p id="result-summary" class="sr-only" aria-live="polite" aria-atomic="true"></p></section>
+
+    <section id="notes" class="notes-section" aria-labelledby="notes-title"><div class="section-heading"><div><p class="eyebrow">RESEARCH NOTES</p><h2 id="notes-title">理解结果，比得到数字更重要</h2></div><span class="section-index">02 / NOTES</span></div><div class="notes-grid">
+      <article class="note-card"><span class="note-number">01</span><h3>定价：风险中性视角</h3><p>BSM 以风险中性分布下的到期收益期望进行贴现。波动率决定分布的离散程度，利率和股息率影响远期价格。</p><details><summary>展开模型与公式</summary><div class="formula">d₁ = [ln(S/K) + (r − q + σ²/2)T] / (σ√T)<br>d₂ = d₁ − σ√T<br>C = Se<sup>−qT</sup>N(d₁) − Ke<sup>−rT</sup>N(d₂)<br>P = Ke<sup>−rT</sup>N(−d₂) − Se<sup>−qT</sup>N(−d₁)</div><p>N 为标准正态累积分布函数。假设欧式行权、常数波动率与利率、连续股息率、无摩擦市场和连续交易。</p></details></article>
+      <article class="note-card"><span class="note-number">02</span><h3>风险：Delta 不是常数</h3><p>Delta 描述局部价格变化，Gamma 描述 Delta 本身的变化。临近到期时，平值附近的 Delta 通常变化更快。</p><details><summary>如何阅读敏感度</summary><p>尝试切换“临近到期”，观察 Delta 曲线。较大价格冲击不能只用一次 Delta 线性外推；本页情景曲线会重新计算完整模型。</p><p>Vega 和 Rho 以 1 个百分点为单位；Theta 以每天为单位，表示时间流逝的影响。</p></details></article>
+      <article class="note-card"><span class="note-number">03</span><h3>验证：看涨看跌平价</h3><p>相同标的、行权价和期限下，看涨与看跌价格差应满足平价关系。这是检查欧式期权定价的一项基础约束。</p><div class="parity-formula">C − P = Se<sup>−qT</sup> − Ke<sup>−rT</sup></div><div class="parity-check"><span>当前参数 · 平价残差</span><strong id="parity">—</strong></div></article>
+    </div></section>
+
+    <section id="about" class="about-section" aria-labelledby="about-title"><div><p class="eyebrow">ABOUT THIS PROJECT</p><h2 id="about-title">一个可复现的金融工程学习项目。</h2><p id="about-copy">围绕欧式期权，连接定价公式、风险敏感度与情景分析。通过改变参数、观察曲线和检查平价关系，建立对衍生品的直观理解。</p><a class="source-link" href="pricing.js" target="_blank" rel="noopener">阅读定价代码 ↗</a></div><div class="method-note"><h3>模型边界</h3><p>参数为可调整的教学情景，不接入实时行情。未计入交易成本、滑点和合约乘数；到期盈亏为收益减去当前权利金，不计权利金融资成本。</p><p>常数波动率模型无法反映波动率微笑、跳跃或提前行权，不直接适用于美式期权及复杂结构产品。</p><div class="references"><a href="https://www.cmegroup.com/education/courses/option-greeks" target="_blank" rel="noopener noreferrer">CME · Option Greeks ↗</a><a href="https://www.csie.ntu.edu.tw/~lyuu/finance1/2006/20060329.pdf" target="_blank" rel="noopener noreferrer">NTU · BSM 模型讲义 ↗</a></div></div></section>
+  </main>
+  <footer><span>Δ <span id="footer-name">Yue Cui</span></span><span>金融工程学习与方法展示</span><a href="#main">回到顶部 ↑</a></footer>
+  <noscript><div class="noscript-note">请启用 JavaScript 以使用定价与图表功能。模型说明仍可直接阅读。</div></noscript>
+</body>
+</html>
